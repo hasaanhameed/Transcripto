@@ -1,0 +1,492 @@
+{
+  "name": "Transcripto",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "transcription",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -384,
+        0
+      ],
+      "id": "cc3d0268-acba-4b93-83ae-d99186b600e3",
+      "name": "Webhook",
+      "webhookId": "b185b17f-4330-47e7-9b72-f94b4b756235"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1200,
+        0
+      ],
+      "id": "0d34d228-0f15-4053-a274-dd0a0e7fd239",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Urdu text:  {{ $json.text }}",
+        "options": {
+          "systemMessage": "=#OVERVIEW:\n- You are a transliteration assistant.\n\n#INSTRUCTIONS:\n- You will receive input in Urdu script.\n- Your task is to convert it into Roman Urdu (using Latin characters).\n- Do not translate into English.\n- Do not summarize.\n- Simply return the same text but written in Roman Urdu spelling.\n- Keep the meaning intact and try to maintain phonetic accuracy (so the Roman Urdu sounds the same when read aloud as the original Urdu).\n- Return only the converted Roman Urdu text, nothing else."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        0
+      ],
+      "id": "db080061-0dff-45e7-acbb-b46a9cd5e843",
+      "name": "Transliteration Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        432,
+        160
+      ],
+      "id": "02398942-1cb9-4e75-96a7-0ceda0e32605",
+      "name": "Gemini-2.5-Flash",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "r8im7FmGGUj9fo0i",
+          "name": "Google API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4o-transcribe"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "84abdbcc-5aae-4ee9-8032-8fe35fe1f699",
+      "name": "GPT-4o-Transcribe",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "89GwJfxkGEc0A5fr",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "translation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "22662ddd-ff73-416c-9dc6-9a632ef0b146"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Translation"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a02dddfb-cfc4-4f21-a671-7420e4ab0be1",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "transcription",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Transcription"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7c041999-29a2-4d5a-a91a-d85cc3602025",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "summary",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Summary"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -176,
+        -16
+      ],
+      "id": "285c9d07-943c-4d05-9e5d-5e25ea3126d3",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/transcriptions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "gpt-4o-transcribe"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        208,
+        368
+      ],
+      "id": "c9119c10-f06d-47ed-af9a-57a00bdc2e3a",
+      "name": "gpt-4o-transcribe",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "89GwJfxkGEc0A5fr",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Urdu text:  {{ $json.text }}",
+        "options": {
+          "systemMessage": "=#OVERVIEW:\n- You are a summary assistant.\n\n#INSTRUCTIONS:\n- You will receive input in Urdu script.\n- Your task is to generate a clear and concise English summary of the input.\n- The summary should highlight only the main ideas and key details, avoiding unnecessary repetition.\n\n#STRUCTURE:\n- Headings (for major themes)\n- Bullet points (for supporting details)\n- Keep the summary short, professional, and easy to read.\n- Return only the structured English summary, nothing else."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        368
+      ],
+      "id": "3fd906d8-4a03-47c7-aa8e-97f80158f510",
+      "name": "Summary Agent"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/translations",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-1"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        336,
+        -352
+      ],
+      "id": "3cbf5a69-450b-4143-a065-0465edb6e618",
+      "name": "Whisper-1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "89GwJfxkGEc0A5fr",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## GET USER INPUT\n- User will first select an action\n- Then they will upload an MP3 File",
+        "height": 240,
+        "width": 256
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        -96
+      ],
+      "id": "d4653414-ba16-41b6-8351-50b2b13d49a5",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## TRANSLATION \n- Translation is directly performed using OpenAI's Whisper-1",
+        "height": 256,
+        "width": 448,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        176,
+        -448
+      ],
+      "id": "c9f70f02-224b-4d05-a78c-d4ca85a748f5",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## TRANSCRIPTION\n- First, the file is transcribed into URDU\n- Then, the AI agent converts it into Roman Urdu(transliteration)",
+        "height": 240,
+        "width": 608,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        128,
+        -96
+      ],
+      "id": "da68afeb-1b05-4325-a873-1c176dd0e5c2",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## SUMMARY\n- The file is first transcribed into URDU\n- Then, the AI Agent converts it into a structured summary",
+        "height": 288,
+        "width": 688,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        128,
+        272
+      ],
+      "id": "78f8a96c-69be-4598-926f-77b7511e4332",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## POST RESULTS",
+        "height": 208,
+        "width": 208
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        -64
+      ],
+      "id": "a1148bf9-0add-48ed-8c9d-f3f728eb6dbe",
+      "name": "Sticky Note4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transliteration Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini-2.5-Flash": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Transliteration Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Summary Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT-4o-Transcribe": {
+      "main": [
+        [
+          {
+            "node": "Transliteration Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Whisper-1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GPT-4o-Transcribe",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "gpt-4o-transcribe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gpt-4o-transcribe": {
+      "main": [
+        [
+          {
+            "node": "Summary Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Whisper-1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e20241b8-beb3-4ed4-940c-720e73e4d14e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d897bfcf21aea7fa073d866110222447fc2d38b239020fdaea15531c46d045cd"
+  },
+  "id": "2N8og3UjChH5U3pV",
+  "tags": []
+}
